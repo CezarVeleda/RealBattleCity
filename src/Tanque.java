@@ -79,12 +79,22 @@ public abstract class Tanque implements I_Movimento, Runnable{
                 }
             }
         }
+        // NOTA PARA APRESENTAÇÃO (Ajuste de Hitbox):
+        // Reduzimos a caixa de colisão em 6 pixels de cada lado para permitir
+        // que o tanque entre em corredores estreitos mesmo estando levemente desalinhado.
+        int margem = 6;
+        Rectangle areaTanqueFutura = new Rectangle(
+                proximoX + margem,
+                proximoY + margem,
+                40 - (margem * 2),
+                40 - (margem * 2)
+        );
         return true; // Caminho livre!
     }
 
     @Override
-    public void mover(){
-        if(this.direcao_atual == null) return; /* Player vai nascer parado (direção null), e a Thread dele vai ficar a girar
+    public boolean mover(){
+        if(this.direcao_atual == null) return false; /* Player vai nascer parado (direção null), e a Thread dele vai ficar a girar
                                                 em sair do lugar até você apertar uma tecla. Já o inimigo,
                                                 precisaremos "dar um empurrão" nele depois para ele não nascer parado
                                                 também. */
@@ -117,7 +127,9 @@ public abstract class Tanque implements I_Movimento, Runnable{
         if (podeMover(proximoX, proximoY)) {
             this.x = proximoX;
             this.y = proximoY;
+            return true;
         }
+        return false;
     }
 
     @Override

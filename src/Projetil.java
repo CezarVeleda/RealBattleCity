@@ -46,8 +46,8 @@ public class Projetil implements I_Movimento, Runnable {
     }
 
     @Override
-    public void mover() {
-        if (!ativo) return;
+    public boolean mover() {
+        if (!ativo) return false;
 
         switch (direcao) {
             case CIMA: this.y -= velocidade; break;
@@ -55,6 +55,7 @@ public class Projetil implements I_Movimento, Runnable {
             case ESQUERDA: this.x -= velocidade; break;
             case DIREITA: this.x += velocidade; break;
         }
+        return true;
     }
 
     // NOTA PARA APRESENTAÇÃO (Colisão do Tiro):
