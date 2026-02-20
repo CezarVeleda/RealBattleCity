@@ -1,3 +1,6 @@
+import java.awt.Rectangle;
+import java.util.List;
+
 public abstract class Tanque implements I_Movimento, Runnable{
 
     protected int x;
@@ -10,7 +13,10 @@ public abstract class Tanque implements I_Movimento, Runnable{
     protected boolean ligado = true;
     protected Thread threadTanque;
 
-
+    // NOTA PARA APRESENTAÇÃO (POO - Associação):
+    // O Tanque precisa conhecer o ambiente ao seu redor para não bater nas paredes.
+    // Usamos 'protected' para que as classes filhas (Player e Inimigo) também enxerguem o mapa.
+    protected List<Bloco> mapa;
 
     //construtor
     public Tanque(int x, int y, int vida, int velocidade) {
@@ -24,6 +30,11 @@ public abstract class Tanque implements I_Movimento, Runnable{
         threadTanque.start();
     }
 
+    // NOTA PARA APRESENTAÇÃO (POO - Encapsulamento):
+    // Metodo 'setter' para injetar a lista de blocos no tanque de forma segura.
+    public void setMapa(List<Bloco> mapa) {
+        this.mapa = mapa;
+    }
 
     // O metodo RUN é obrigatório pela interface Runnable, faz parte
     // É aqui que o tanque "vive"
@@ -47,6 +58,30 @@ public abstract class Tanque implements I_Movimento, Runnable{
 
     }
 
+    // NOTA PARA APRESENTAÇÃO (Lógica de Colisão):
+    // Este metodo é o "Sensor" do tanque. Ele prevê o futuro: "Se eu for para X e Y, eu bato?"
+    private boolean podeMover(int proximoX, int proximoY) {
+        // 1. Barreira invisível das bordas da tela (Evita sair da janela)
+        if (proximoX < 0 || proximoX + 40 > 600 || proximoY < 0 || proximoY + 40 > 520) {
+            return false; // Bateu na borda da janela
+        }
+
+        // 2. Barreira física (Tijolos, Aço e Água)
+        if (mapa != null) {
+            // Cria um retângulo simulando onde o tanque vai estar
+            Rectangle areaTanqueFutura = new Rectangle(proximoX, proximoY, 40, 40);
+
+            for (Bloco bloco : mapa) {
+                // NOTA PARA APRESENTAÇÃO (POO - Herança na Prática):
+                // Como a classe Bloco "extends Rectangle", herdamos o metodo intersects() do próprio Java.
+                if (bloco.tipo != Bloco.VAZIO && areaTanqueFutura.intersects(bloco)) {
+                    return false; // Bateu na parede, aço ou água
+                }
+            }
+        }
+        return true; // Caminho livre!
+    }
+
     @Override
     public void mover(){
         if(this.direcao_atual == null) return; /* Player vai nascer parado (direção null), e a Thread dele vai ficar a girar
@@ -54,24 +89,34 @@ public abstract class Tanque implements I_Movimento, Runnable{
                                                 precisaremos "dar um empurrão" nele depois para ele não nascer parado
                                                 também. */
 
+        // NOTA PARA APRESENTAÇÃO (Previsão de Movimento):
+        // Em vez de alterar o 'this.x' direto, criamos variáveis temporárias.
+        int proximoX = this.x;
+        int proximoY = this.y;
 
-            // velocidade é a quantidade de pixels que vamos mexer o tanque
-            // o Y é invertido do que no plano cartesiano usando Swing/AWT
-            // então para cima Y diminui e para baixo Y aumenta
-            // a matemática é NovaPosicao = PosicaoAtual + (Direcao x Velocidade)
+        // velocidade é a quantidade de pixels que vamos mexer o tanque
+        // o Y é invertido do que no plano cartesiano usando Swing/AWT
+        // então para cima Y diminui e para baixo Y aumenta
+        // a matemática é NovaPosicao = PosicaoAtual + (Direcao x Velocidade)
         switch(this.direcao_atual){
             case CIMA:
-                this.y -= this.velocidade;
+                proximoY -= this.velocidade;
                 break;
             case BAIXO:
-                this.y += this.velocidade;
+                proximoY += this.velocidade;
                 break;
             case ESQUERDA:
-                this.x -= this.velocidade;
+                proximoX -= this.velocidade;
                 break;
             case DIREITA:
-                this.x += this.velocidade;
+                proximoX += this.velocidade;
                 break;
+        }
+
+        // SÓ MOVE O TANQUE SE O CAMINHO ESTIVER LIVRE DE COLISÕES
+        if (podeMover(proximoX, proximoY)) {
+            this.x = proximoX;
+            this.y = proximoY;
         }
     }
 
@@ -94,6 +139,6 @@ public abstract class Tanque implements I_Movimento, Runnable{
         this.vida--;
     }
 
-    public void atirar(){};
+    public void atirar(){}
 
 }

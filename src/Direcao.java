@@ -1,3 +1,3 @@
 public enum Direcao {
-    CIMA, BAIXO, ESQUERDA, DIREITA;
+    CIMA, BAIXO, ESQUERDA, DIREITA
 }

@@ -18,12 +18,15 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     // Lista que vai guardar todas as paredes do jogo
     List<Bloco> blocos = new ArrayList<>();
 
+    // NOTA PARA APRESENTAÇÃO: Lista para guardar os tiros que estão voando na tela no momento
+    List<Projetil> tiros = new ArrayList<>();
 
     Thread threadTela; // Thread só para redesenhar a imagem (FPS)
 
-    // criando NA TELA os tanques
-    Player jogador = new Player(100, 100); // posição de nascimento lembra?
-    Inimigo_Rapido inimigo = new Inimigo_Rapido(300, 100);
+    // criando NA TELA os tanques alinhados com o grid (Múltiplos de 40)
+    // NOTA PARA APRESENTAÇÃO: Nascer nos múltiplos de 40 evita que o tanque inicie preso na parede.
+    Player jogador = new Player(160, 480); // posição de nascimento lembra?
+    Inimigo_Rapido inimigo = new Inimigo_Rapido(0, 0);
 
 
     public PainelJogo() {
@@ -38,7 +41,13 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         inimigo.set_direcao(Direcao.BAIXO);
 
         carregarMapa();
+
+        // NOTA PARA APRESENTAÇÃO (Injeção de Dependência):
+        // Após carregar o mapa, entregamos a planta do cenário (lista de blocos) para os tanques.
+        jogador.setMapa(blocos);
+        inimigo.setMapa(blocos);
     }
+
     public void iniciarTela() { //auto explicativo né ?
         threadTela = new Thread(this);
         threadTela.start();
@@ -76,6 +85,18 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         // Desenhar o Inimigo (Cor Vermelha)
         g.setColor(Color.RED);
         g.fillRect(inimigo.get_x(), inimigo.get_y(), 40, 40);
+
+        // NOTA PARA APRESENTAÇÃO (Renderização de Tiros):
+        // Desenhamos todos os tiros que estão ativos na tela.
+        for (int i = 0; i < tiros.size(); i++) {
+            Projetil tiro = tiros.get(i);
+            if (tiro.isAtivo()) {
+                tiro.desenhar(g);
+            } else {
+                tiros.remove(i); // Remove da memória se o tiro já bateu em algo
+                i--; // Ajusta o índice da lista após a remoção
+            }
+        }
     }
 
     // Metodo que transforma os números da matriz em objetos visuais
@@ -113,6 +134,17 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
             if (codigoTecla == KeyEvent.VK_D || codigoTecla == KeyEvent.VK_RIGHT) {
                 jogador.set_direcao(Direcao.DIREITA);
             }
+
+            // NOTA PARA APRESENTAÇÃO (Ação de Atirar):
+            if (codigoTecla == KeyEvent.VK_SPACE) {
+                // O tiro precisa saber de onde está saindo e para onde o jogador estava olhando.
+                // Se o jogador estiver parado (direcao_atual == null), atira para CIMA por padrão.
+                Direcao direcaoTiro = jogador.direcao_atual != null ? jogador.direcao_atual : Direcao.CIMA;
+
+                // Cria um novo tiro (em sua própria Thread) e adiciona na lista da tela
+                Projetil novoTiro = new Projetil(jogador.get_x(), jogador.get_y(), direcaoTiro, blocos);
+                tiros.add(novoTiro);
+            }
         }
         @Override
         public void keyReleased(KeyEvent e) {
@@ -121,7 +153,4 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
             jogador.set_direcao(null);
         }
     }
-
-
-
 }
