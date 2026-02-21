@@ -110,6 +110,7 @@ public class Projetil implements I_Movimento, Runnable {
                     // Se a vida zerou (Inimigo_Rapido tem só 1 de vida, então morre na hora)
                     if (inimigo.isMorto()) {
                         inimigos.remove(i); // Remove ele da lista da tela
+                        jogador.adicionarPontos(100);
                     }
                     return; // Sai para o tiro não varar e acertar dois de uma vez
                 }

@@ -176,6 +176,8 @@ public abstract class Tanque implements I_Movimento, Runnable{
     public boolean isMorto() {
         return this.vida <= 0;
     }
-
-    public void atirar(){}
+    // Retorna a vida atual para o Painel poder desenhar no HUD
+    public int getVida() {
+        return this.vida;
+    }
 }

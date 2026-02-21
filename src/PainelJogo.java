@@ -32,11 +32,15 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     // Em vez de um inimigo fixo, usamos uma lista para controlar múltiplos inimigos.
     List<Tanque> inimigos = new ArrayList<>();
 
+    private String nomeJogador;
+    private boolean rankingSalvo = false; // Impede de salvar o mesmo Game Over 60x por segundo
     // NOTA PARA APRESENTAÇÃO (Estado de Jogo):
     // Variável que controla se o jogo ainda está a decorrer ou se a base foi destruída.
     private boolean gameOver = false;
 
-    public PainelJogo() {
+    public PainelJogo(String nomeJogador) {
+        this.nomeJogador = nomeJogador;
+
         this.setPreferredSize(new Dimension(LARGURA_TELA, ALTURA_TELA));
         this.setBackground(Color.BLACK); // Fundo preto clássico
         this.setDoubleBuffered(true); // Melhora a renderização
@@ -101,6 +105,12 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         // 2. Verifica se o Player perdeu todas as vidas
         if (!baseViva || jogador.isMorto()) {
             this.gameOver = true;
+
+            // SÓ SALVA UMA VEZ E É QUANDO MORRE
+            if (!rankingSalvo) {
+                GerenciadorArquivo.salvarPontuacao(nomeJogador, jogador.getPontuacao());
+                rankingSalvo = true;
+            }
         }
 
         // 3. IA Atiradora: Lê se os inimigos querem atirar
@@ -118,6 +128,16 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
+        // NOTA PARA APRESENTAÇÃO (HUD - Head-Up Display):
+        // Desenhando o placar na tela usando os dados encapsulados do Player e da lista de Inimigos.
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+
+        g.drawString("Jogador: " + nomeJogador, 10, 20);
+        g.drawString("Vidas: " + Math.max(0, jogador.getVida()), 10, 40); // Math.max evita mostrar vida "-1"
+        g.drawString("Pontos: " + jogador.getPontuacao(), 10, 60);
+        g.drawString("Inimigos Restantes: " + inimigos.size(), LARGURA_TELA - 170, 20);
 
         // 1. Desenhamos o Mapa PRIMEIRO (para ficar no fundo)
         for(Bloco bloco : blocos){
