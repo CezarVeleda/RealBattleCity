@@ -17,14 +17,22 @@ public class Projetil implements I_Movimento, Runnable {
     // O tiro precisa conhecer o mapa para saber se bateu numa parede
     private List<Bloco> mapa;
 
+    // NOVAS VARIÁVEIS PARA O COMBATE
+    private boolean tiroDoPlayer;
+    private List<Tanque> inimigos; // A lista de alvos que este tiro pode acertar
+    private Player jogador; // Adicionado para o tiro inimigo saber onde o player está
+
     // Construtor
-    public Projetil(int x, int y, Direcao direcao, List<Bloco> mapa) {
+    public Projetil(int x, int y, Direcao direcao, List<Bloco> mapa, boolean tiroDoPlayer, List<Tanque> inimigos, Player jogador) {
         // Ajustamos o X e Y para o tiro sair do "meio" do tanque (que tem 40x40),
         // como o tiro vai ter 10x10, somamos 15 para centralizar.
         this.x = x + 15;
         this.y = y + 15;
         this.direcao = direcao;
         this.mapa = mapa;
+        this.tiroDoPlayer = tiroDoPlayer;
+        this.inimigos = inimigos;
+        this.jogador = jogador;
 
         // Inicia a vida própria (Thread) do tiro assim que ele é criado
         threadProjetil = new Thread(this);
@@ -78,13 +86,43 @@ public class Projetil implements I_Movimento, Runnable {
                     if (areaTiro.intersects(bloco)) {
                         ativo = false; // O tiro morre ao bater (a Thread encerra)
 
-                        // Lógica de destruição do cenário
-                        if (bloco.tipo == Bloco.TIJOLO) {
-                            bloco.tipo = Bloco.VAZIO; // O tijolo é destruído e vira chão vazio!
+                        // Lógica de destruição do cenário (CORRIGIDA PARA DESTRUIR A BASE TAMBÉM)
+                        if (bloco.tipo == Bloco.TIJOLO || bloco.tipo == Bloco.BASE) {
+                            bloco.tipo = Bloco.VAZIO; // O tijolo/base é destruído e vira chão vazio!
                         }
                         return; // Já bateu, sai da checagem
                     }
                 }
+            }
+        }
+
+        // 3. NOTA PARA APRESENTAÇÃO (Colisão Tiro -> Tanque Inimigo)
+        if (tiroDoPlayer && inimigos != null) {
+            for (int i = 0; i < inimigos.size(); i++) {
+                Tanque inimigo = inimigos.get(i);
+                Rectangle hitboxInimigo = new Rectangle(inimigo.get_x(), inimigo.get_y(), 40, 40);
+
+                // Se a caixa do tiro bater na caixa do inimigo
+                if (areaTiro.intersects(hitboxInimigo)) {
+                    ativo = false; // O tiro some ao acertar
+                    inimigo.levar_dano(); // O inimigo perde vida
+
+                    // Se a vida zerou (Inimigo_Rapido tem só 1 de vida, então morre na hora)
+                    if (inimigo.isMorto()) {
+                        inimigos.remove(i); // Remove ele da lista da tela
+                    }
+                    return; // Sai para o tiro não varar e acertar dois de uma vez
+                }
+            }
+        }
+
+        // 4. NOTA PARA APRESENTAÇÃO (Colisão Tiro Inimigo -> Player)
+        if (!tiroDoPlayer && jogador != null && !jogador.isMorto()) {
+            Rectangle hitboxPlayer = new Rectangle(jogador.get_x(), jogador.get_y(), 40, 40);
+            if (areaTiro.intersects(hitboxPlayer)) {
+                ativo = false; // Tiro some
+                jogador.levar_dano(); // Tira uma vida do Player
+                return;
             }
         }
     }
@@ -92,8 +130,13 @@ public class Projetil implements I_Movimento, Runnable {
     // Metodo para a tela desenhar o tiro
     public void desenhar(Graphics g) {
         if (ativo) {
-            g.setColor(Color.BLUE);
-            g.fillOval(x, y, 10, 10); // Desenha uma bolinha azul de 10x10 pixels
+            // Se for do jogador, o tiro é Azul, se for do inimigo, o tiro é Vermelho
+            if (tiroDoPlayer) {
+                g.setColor(Color.BLUE);
+            } else {
+                g.setColor(Color.RED);
+            }
+            g.fillOval(x, y, 10, 10); // Desenha uma bolinha de 10x10 pixels
         }
     }
 

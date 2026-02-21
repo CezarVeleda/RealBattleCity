@@ -25,6 +25,12 @@ public class Inimigo_Rapido extends Tanque {
                 }
             }
 
+            // NOTA PARA APRESENTAÇÃO (IA Atiradora):
+            // O inimigo tem uma chance aleatória (ex: 3% a cada passo) de atirar.
+            if (random.nextInt(100) < 3) {
+                prontoParaAtirar = true;
+            }
+
             try {
                 Thread.sleep(50);
             } catch(InterruptedException erro) {

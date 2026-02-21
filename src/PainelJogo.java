@@ -1,5 +1,6 @@
 import javax.swing.JPanel;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Dimension;
 import java.awt.event.KeyAdapter;
@@ -26,8 +27,14 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     // criando NA TELA os tanques alinhados com o grid (Múltiplos de 40)
     // NOTA PARA APRESENTAÇÃO: Nascer nos múltiplos de 40 evita que o tanque inicie preso na parede.
     Player jogador = new Player(160, 480); // posição de nascimento lembra?
-    Inimigo_Rapido inimigo = new Inimigo_Rapido(0, 0);
 
+    // NOTA PARA APRESENTAÇÃO (Uso de Coleções / Gerenciador de Inimigos):
+    // Em vez de um inimigo fixo, usamos uma lista para controlar múltiplos inimigos.
+    List<Tanque> inimigos = new ArrayList<>();
+
+    // NOTA PARA APRESENTAÇÃO (Estado de Jogo):
+    // Variável que controla se o jogo ainda está a decorrer ou se a base foi destruída.
+    private boolean gameOver = false;
 
     public PainelJogo() {
         this.setPreferredSize(new Dimension(LARGURA_TELA, ALTURA_TELA));
@@ -37,15 +44,23 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         this.setFocusable(true); // Permite que o painel "tenha foco" para receber teclas
         this.addKeyListener(new TecladoAdapter()); // Pluga o "fio" do teclado
 
-        // Gambiarra temporária: Dar uma direção para o inimigo ver ele andando sozinho
-        inimigo.set_direcao(Direcao.BAIXO);
-
         carregarMapa();
 
-        // NOTA PARA APRESENTAÇÃO (Injeção de Dependência):
-        // Após carregar o mapa, entregamos a planta do cenário (lista de blocos) para os tanques.
+        // GERANDO INIMIGOS (Spawn)
+        // Adicionamos 3 inimigos rápidos no topo do mapa em colunas diferentes
+        inimigos.add(new Inimigo_Rapido(0, 0));
+        inimigos.add(new Inimigo_Rapido(280, 0));
+        inimigos.add(new Inimigo_Rapido(560, 0));
+
+        // NOTA PARA APRESENTAÇÃO (Injeção de Dependência em Massa):
+        // Após carregar o mapa, entregamos a planta do cenário e a direção para todos os inimigos.
+        // Gambiarra temporária: Dar uma direção para o inimigo ver ele andando sozinho
+        for (Tanque ini : inimigos) {
+            ini.setMapa(blocos);
+            ini.set_direcao(Direcao.BAIXO);
+        }
+
         jogador.setMapa(blocos);
-        inimigo.setMapa(blocos);
     }
 
     public void iniciarTela() { //auto explicativo né ?
@@ -59,11 +74,42 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         memória com a posição atualizada, mas AQUI a janela atualiza (se redesenha) e pega a nova posição
          */
         while (threadTela != null) {
+            if (!gameOver) {
+                verificarEstadoDoJogo(); // Se o jogo não acabou, verifica se a base ainda existe
+            }
             repaint(); // Chama o paintComponent
             try {
                 Thread.sleep(17);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    // NOTA PARA APRESENTAÇÃO (Lógica de Verificação - Game Loop):
+    // O painel percorre os blocos e verifica estados do jogo (Base e Inimigos atirando).
+    private void verificarEstadoDoJogo() {
+        // 1. Verifica se a base ainda está viva
+        boolean baseViva = false;
+        for (Bloco bloco : blocos) {
+            if (bloco.tipo == Bloco.BASE) {
+                baseViva = true;
+                break;
+            }
+        }
+
+        // 2. Verifica se o Player perdeu todas as vidas
+        if (!baseViva || jogador.isMorto()) {
+            this.gameOver = true;
+        }
+
+        // 3. IA Atiradora: Lê se os inimigos querem atirar
+        for (Tanque ini : inimigos) {
+            if (ini.prontoParaAtirar) {
+                // Cria o tiro do inimigo (tiroDoPlayer = false), e passamos o jogador para o tiro saber quem acertar
+                Projetil tiroInimigo = new Projetil(ini.get_x(), ini.get_y(), ini.getUltimaDirecao(), blocos, false, inimigos, jogador);
+                tiros.add(tiroInimigo);
+                ini.prontoParaAtirar = false; // Reseta a vontade do inimigo para ele não atirar infinitamente
             }
         }
     }
@@ -78,13 +124,18 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
             bloco.desenhar(g);
         }
 
-        // Desenhar o Jogador (Cor Verde)
-        g.setColor(Color.GREEN);
-        g.fillRect(jogador.get_x(), jogador.get_y(), 40, 40);
+        // Desenhar o Jogador (Cor Verde) apenas se estiver vivo
+        if (!jogador.isMorto()) {
+            g.setColor(Color.GREEN);
+            g.fillRect(jogador.get_x(), jogador.get_y(), 40, 40);
+        }
 
-        // Desenhar o Inimigo (Cor Vermelha)
+        // NOTA PARA APRESENTAÇÃO (Renderização de Múltiplos Inimigos):
+        // Percorremos a lista desenhando apenas os inimigos que ainda estão vivos.
         g.setColor(Color.RED);
-        g.fillRect(inimigo.get_x(), inimigo.get_y(), 40, 40);
+        for (Tanque ini : inimigos) {
+            g.fillRect(ini.get_x(), ini.get_y(), 40, 40);
+        }
 
         // NOTA PARA APRESENTAÇÃO (Renderização de Tiros):
         // Desenhamos todos os tiros que estão ativos na tela.
@@ -96,6 +147,15 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
                 tiros.remove(i); // Remove da memória se o tiro já bateu em algo
                 i--; // Ajusta o índice da lista após a remoção
             }
+        }
+
+        // NOTA PARA APRESENTAÇÃO (Interface de Fim de Jogo):
+        // Se a variável gameOver for verdadeira, sobrepomos um texto gigante no ecrã.
+        if (gameOver) {
+            g.setColor(Color.RED);
+            g.setFont(new Font("Arial", Font.BOLD, 60)); // Fonte gigante e em negrito
+            // Matemática simples para centrar o texto no meio da janela
+            g.drawString("GAME OVER", LARGURA_TELA / 2 - 190, ALTURA_TELA / 2);
         }
     }
 
@@ -119,6 +179,9 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     public class TecladoAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
+            // Se for Game Over, o jogador perde o controlo do tanque (ignora as teclas)
+            if (gameOver) return;
+
             int codigoTecla = e.getKeyCode();
 
             // Passamos a ordem para o jogador
@@ -135,19 +198,20 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
                 jogador.set_direcao(Direcao.DIREITA);
             }
 
-            // NOTA PARA APRESENTAÇÃO (Ação de Atirar):
+            // NOTA PARA APRESENTAÇÃO (Ação de Atirar com Memória de Estado):
             if (codigoTecla == KeyEvent.VK_SPACE) {
-                // O tiro precisa saber de onde está saindo e para onde o jogador estava olhando.
-                // Se o jogador estiver parado (direcao_atual == null), atira para CIMA por padrão.
-                Direcao direcaoTiro = jogador.direcao_atual != null ? jogador.direcao_atual : Direcao.CIMA;
+                // Em vez de olhar para a direcao_atual (que fica nula ao parar),
+                // o tiro agora pede a última direção que ficou gravada na memória do tanque.
+                Direcao direcaoTiro = jogador.getUltimaDirecao();
 
-                // Cria um novo tiro (em sua própria Thread) e adiciona na lista da tela
-                Projetil novoTiro = new Projetil(jogador.get_x(), jogador.get_y(), direcaoTiro, blocos);
+                // Agora passamos 'true' (para indicar que é tiro do jogador), passamos a lista de inimigos, E o jogador
+                Projetil novoTiro = new Projetil(jogador.get_x(), jogador.get_y(), direcaoTiro, blocos, true, inimigos, jogador);
                 tiros.add(novoTiro);
             }
         }
         @Override
         public void keyReleased(KeyEvent e) {
+            if (gameOver) return;
             // Quando soltar qualquer tecla, definimos a direção como NULL
             // Isso fará o 'if(direcao == null) return' lá no Tanque funcionar e ele para.
             jogador.set_direcao(null);

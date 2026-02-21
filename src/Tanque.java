@@ -18,6 +18,12 @@ public abstract class Tanque implements I_Movimento, Runnable{
     // Usamos 'protected' para que as classes filhas (Player e Inimigo) também enxerguem o mapa.
     protected List<Bloco> mapa;
 
+    // (Memória de estado): O tanque nasce olhando para cima
+    protected Direcao ultima_direcao = Direcao.CIMA;
+
+    // (Gatilho da IA): O tanque avisa ao painel quando quer criar um tiro
+    public boolean prontoParaAtirar = false;
+
     //construtor
     public Tanque(int x, int y, int vida, int velocidade) {
         this.x = x;
@@ -58,7 +64,7 @@ public abstract class Tanque implements I_Movimento, Runnable{
 
     }
 
-    // NOTA PARA APRESENTAÇÃO (Lógica de Colisão):
+    // NOTA PARA APRESENTAÇÃO (Lógica de Colisão e Hitbox):
     // Este metodo é o "Sensor" do tanque. Ele prevê o futuro: "Se eu for para X e Y, eu bato?"
     private boolean podeMover(int proximoX, int proximoY) {
         // 1. Barreira invisível das bordas da tela (Evita sair da janela)
@@ -68,8 +74,18 @@ public abstract class Tanque implements I_Movimento, Runnable{
 
         // 2. Barreira física (Tijolos, Aço e Água)
         if (mapa != null) {
-            // Cria um retângulo simulando onde o tanque vai estar
-            Rectangle areaTanqueFutura = new Rectangle(proximoX, proximoY, 40, 40);
+
+            // NOTA PARA APRESENTAÇÃO (Ajuste de Hitbox):
+            // Reduzimos a caixa de colisão em 6 pixels de cada lado ANTES de checar a colisão.
+            // O tanque continua desenhado com 40x40, mas o "corpo físico" dele tem 28x28.
+            // Isso permite que ele entre em corredores estreitos mesmo estando levemente desalinhado.
+            int margem = 6;
+            Rectangle areaTanqueFutura = new Rectangle(
+                    proximoX + margem,
+                    proximoY + margem,
+                    40 - (margem * 2),
+                    40 - (margem * 2)
+            );
 
             for (Bloco bloco : mapa) {
                 // NOTA PARA APRESENTAÇÃO (POO - Herança na Prática):
@@ -79,16 +95,6 @@ public abstract class Tanque implements I_Movimento, Runnable{
                 }
             }
         }
-        // NOTA PARA APRESENTAÇÃO (Ajuste de Hitbox):
-        // Reduzimos a caixa de colisão em 6 pixels de cada lado para permitir
-        // que o tanque entre em corredores estreitos mesmo estando levemente desalinhado.
-        int margem = 6;
-        Rectangle areaTanqueFutura = new Rectangle(
-                proximoX + margem,
-                proximoY + margem,
-                40 - (margem * 2),
-                40 - (margem * 2)
-        );
         return true; // Caminho livre!
     }
 
@@ -135,6 +141,16 @@ public abstract class Tanque implements I_Movimento, Runnable{
     @Override
     public void set_direcao(Direcao novaDirecao){
         this.direcao_atual = novaDirecao;
+
+        // NOTA PARA APRESENTAÇÃO: Salva a direção na memória, a menos que seja nula (parado)
+        if (novaDirecao != null) {
+            this.ultima_direcao = novaDirecao;
+        }
+    }
+
+    // Entrega a direção salva para o tiro usar
+    public Direcao getUltimaDirecao() {
+        return this.ultima_direcao;
     }
 
     @Override
@@ -147,10 +163,19 @@ public abstract class Tanque implements I_Movimento, Runnable{
         return this.y;
     }
 
+    // NOTA PARA APRESENTAÇÃO (Encapsulamento do Dano):
+    // O tanque controla a sua própria morte. Se a vida zerar, ele desliga a própria Thread.
     public void levar_dano(){
         this.vida--;
+        if (this.vida <= 0) {
+            this.ligado = false; // Desliga a Thread na memória
+        }
+    }
+
+    // Metodo auxiliar para o jogo saber se este tanque já explodiu
+    public boolean isMorto() {
+        return this.vida <= 0;
     }
 
     public void atirar(){}
-
 }
