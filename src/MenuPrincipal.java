@@ -4,17 +4,20 @@ import java.awt.*;
 public class MenuPrincipal extends JFrame{
 
     private JTextField campoNome;
+    // NOTA PARA APRESENTAÇÃO: JComboBox são listas suspensas que limitam as opções do utilizador
+    private JComboBox<String> comboDificuldade;
+    private JComboBox<String> comboMapa;
 
     public MenuPrincipal(){
         //configurações básicas da janela do menu;
 
         setTitle("Battle City -  Menu Inicial");
-        setSize(400,300);
+        setSize(400,400); // Aumentado para caber as opções
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // centralizar na tela
 
-        // Usamos um GridLayout para empilhar os botões bonitinhos (5 linhas, 1 coluna)
-        setLayout(new GridLayout(5,1,10,10));
+        // Usamos um GridLayout para empilhar os botões bonitinhos (agora 7 linhas, 1 coluna)
+        setLayout(new GridLayout(7,1,10,10));
 
         // Titulo do jogo
 
@@ -29,6 +32,23 @@ public class MenuPrincipal extends JFrame{
         campoNome = new JTextField(15);
         painelNome.add(campoNome);
         add(painelNome);
+
+        // Caixa de Escolha da Dificuldade
+        JPanel painelDificuldade = new JPanel();
+        painelDificuldade.add(new JLabel("Dificuldade:"));
+        String[] opcoesDificuldade = {"Fácil", "Média", "Difícil"};
+        comboDificuldade = new JComboBox<>(opcoesDificuldade);
+        comboDificuldade.setSelectedIndex(1); // Deixa "Média" marcada por padrão
+        painelDificuldade.add(comboDificuldade);
+        add(painelDificuldade);
+
+        // Caixa de Escolha do Mapa
+        JPanel painelMapa = new JPanel();
+        painelMapa.add(new JLabel("Mapa:"));
+        String[] opcoesMapa = {"Mapa 1", "Mapa 2", "Mapa 3"};
+        comboMapa = new JComboBox<>(opcoesMapa);
+        painelMapa.add(comboMapa);
+        add(painelMapa);
 
         // Botoes essenciais
 
@@ -50,6 +70,7 @@ public class MenuPrincipal extends JFrame{
             String textoRanking = GerenciadorArquivo.lerRanking();
             JOptionPane.showMessageDialog(this, textoRanking, "Top 10 Jogadores", JOptionPane.INFORMATION_MESSAGE);
         });
+
         // Botão Jogar: Valida o nome e abre o jogo
         btnJogar.addActionListener(e -> {
             String nomeJogador = campoNome.getText().trim();
@@ -59,21 +80,24 @@ public class MenuPrincipal extends JFrame{
                 return; // Impede o jogo de abrir sem nome
             }
 
+            String dificuldadeEscolhida = (String) comboDificuldade.getSelectedItem();
+            String mapaEscolhido = (String) comboMapa.getSelectedItem();
+
             // Esconde o menu e chama o jogo
             this.dispose();
-            iniciarJogo(nomeJogador);
+            iniciarJogo(nomeJogador, dificuldadeEscolhida, mapaEscolhido);
         });
 
     }
 
     // Metodo que faz exatamente o que o Main fazia antes, que é chamar os mapas etc, o Main vai chamar Menu Principal
-    private void iniciarJogo(String nome) {
+    private void iniciarJogo(String nome, String dificuldade, String mapa) {
         JFrame janelaJogo = new JFrame();
         janelaJogo.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         janelaJogo.setResizable(false);
-        janelaJogo.setTitle("Battle City - Jogador: " + nome); // Mostra o nome na barra
+        janelaJogo.setTitle("Battle City - Jogador: " + nome + " | Dificuldade: " + dificuldade); // Mostra o nome na barra
 
-        PainelJogo painel = new PainelJogo(nome);
+        PainelJogo painel = new PainelJogo(nome, dificuldade, mapa);
         janelaJogo.add(painel);
 
         janelaJogo.pack();
@@ -81,5 +105,6 @@ public class MenuPrincipal extends JFrame{
         janelaJogo.setVisible(true);
 
         painel.iniciarTela();
+        painel.requestFocusInWindow(); // OBRIGA O TECLADO A OLHAR PRO JOGO
     }
 }

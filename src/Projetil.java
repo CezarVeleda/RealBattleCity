@@ -42,8 +42,11 @@ public class Projetil implements I_Movimento, Runnable {
     @Override
     public void run() {
         while (ativo) {
-            mover();
-            checarColisao();
+            // NOTA PARA APRESENTAÇÃO: O tiro congela no ar se pausado
+            if (!PainelJogo.isPaused) {
+                mover();
+                checarColisao();
+            }
 
             try {
                 Thread.sleep(20); // Velocidade de atualização do tiro (freio da animação)
@@ -143,6 +146,11 @@ public class Projetil implements I_Movimento, Runnable {
 
     public boolean isAtivo() {
         return ativo;
+    }
+
+    // NOVO: Desliga a Thread forçadamente caso o jogador decida Voltar ao Menu
+    public void forcarParada() {
+        this.ativo = false;
     }
 
     // Métodos obrigatórios da interface I_Movimento

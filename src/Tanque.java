@@ -48,7 +48,11 @@ public abstract class Tanque implements I_Movimento, Runnable{
     public void run(){
         while(ligado){ // se o tanque for destruído o ligado fica em false e ele não se move mais
 
-            mover(); // o tanque faz UM movimento em determinada direcao que a IA achou de bom tom fazer
+            // NOTA PARA APRESENTAÇÃO (Global State - Pause):
+            // O tanque só pensa e se move se o jogo NÃO estiver pausado.
+            if (!PainelJogo.isPaused) {
+                mover(); // o tanque faz UM movimento em determinada direcao que a IA achou de bom tom fazer
+            }
 
             try{
                 Thread.sleep(50); /* Dai ele para, estamos a simular um fps, basicamente ele anda ali em cima
@@ -163,6 +167,12 @@ public abstract class Tanque implements I_Movimento, Runnable{
         return this.y;
     }
 
+    // Permite ao Painel recolocar o tanque na base ao mudar de fase
+    public void setPosicao(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
     // NOTA PARA APRESENTAÇÃO (Encapsulamento do Dano):
     // O tanque controla a sua própria morte. Se a vida zerar, ele desliga a própria Thread.
     public void levar_dano(){
@@ -176,8 +186,16 @@ public abstract class Tanque implements I_Movimento, Runnable{
     public boolean isMorto() {
         return this.vida <= 0;
     }
+
     // Retorna a vida atual para o Painel poder desenhar no HUD
     public int getVida() {
         return this.vida;
     }
+
+    // NOVO: Desliga a Thread forçadamente caso o jogador decida Voltar ao Menu
+    public void forcarParada() {
+        this.ligado = false;
+    }
+
+    public void atirar(){}
 }

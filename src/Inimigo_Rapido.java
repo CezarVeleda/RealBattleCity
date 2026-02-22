@@ -15,20 +15,23 @@ public class Inimigo_Rapido extends Tanque {
     @Override
     public void run() {
         while(ligado) {
-            // Tenta se mover. Se retornar false (bateu na parede)...
-            if (!mover()) {
-                escolherNovaDirecao(); // ...ele escolhe outro caminho!
-            } else {
-                // Mesmo com caminho livre, ele tem 2% de chance de virar do nada (ficar imprevisível)
-                if (random.nextInt(100) < 2) {
-                    escolherNovaDirecao();
-                }
-            }
 
-            // NOTA PARA APRESENTAÇÃO (IA Atiradora):
-            // O inimigo tem uma chance aleatória (ex: 3% a cada passo) de atirar.
-            if (random.nextInt(100) < 3) {
-                prontoParaAtirar = true;
+            // NOTA PARA APRESENTAÇÃO: A IA "dorme" enquanto o jogo estiver pausado
+            if (!PainelJogo.isPaused) {
+                // Tenta se mover. Se retornar false (bateu na parede)...
+                if (!mover()) {
+                    escolherNovaDirecao(); // ...ele escolhe outro caminho!
+                } else {
+                    // Mesmo com caminho livre, ele tem 2% de chance de virar do nada (ficar imprevisível)
+                    if (random.nextInt(100) < 2) {
+                        escolherNovaDirecao();
+                    }
+                }
+
+                // IA Atiradora: O inimigo tem uma chance aleatória de atirar.
+                if (random.nextInt(100) < 3) {
+                    prontoParaAtirar = true;
+                }
             }
 
             try {

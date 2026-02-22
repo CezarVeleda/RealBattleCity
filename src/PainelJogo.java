@@ -1,4 +1,6 @@
 import javax.swing.JPanel;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -18,28 +20,32 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
 
     // Lista que vai guardar todas as paredes do jogo
     List<Bloco> blocos = new ArrayList<>();
-
     // NOTA PARA APRESENTAÇÃO: Lista para guardar os tiros que estão voando na tela no momento
     List<Projetil> tiros = new ArrayList<>();
 
     Thread threadTela; // Thread só para redesenhar a imagem (FPS)
 
     // criando NA TELA os tanques alinhados com o grid (Múltiplos de 40)
-    // NOTA PARA APRESENTAÇÃO: Nascer nos múltiplos de 40 evita que o tanque inicie preso na parede.
     Player jogador = new Player(160, 480); // posição de nascimento lembra?
 
     // NOTA PARA APRESENTAÇÃO (Uso de Coleções / Gerenciador de Inimigos):
-    // Em vez de um inimigo fixo, usamos uma lista para controlar múltiplos inimigos.
     List<Tanque> inimigos = new ArrayList<>();
 
-    private String nomeJogador;
-    private boolean rankingSalvo = false; // Impede de salvar o mesmo Game Over 60x por segundo
-    // NOTA PARA APRESENTAÇÃO (Estado de Jogo):
-    // Variável que controla se o jogo ainda está a decorrer ou se a base foi destruída.
     private boolean gameOver = false;
 
-    public PainelJogo(String nomeJogador) {
+    // NOVAS VARIÁVEIS: Controlo de Fases, Persistência e Pause
+    private int faseAtual = 1;
+    private int quantidadeInimigosBase = 3;
+    private String nomeJogador;
+    private String mapaEscolhido;
+    private boolean pontuacaoSalva = false;
+
+    public static boolean isPaused = false;
+
+    // Construtor atualizado
+    public PainelJogo(String nomeJogador, String dificuldade, String mapaEscolhido) {
         this.nomeJogador = nomeJogador;
+        this.mapaEscolhido = mapaEscolhido;
 
         this.setPreferredSize(new Dimension(LARGURA_TELA, ALTURA_TELA));
         this.setBackground(Color.BLACK); // Fundo preto clássico
@@ -48,28 +54,37 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         this.setFocusable(true); // Permite que o painel "tenha foco" para receber teclas
         this.addKeyListener(new TecladoAdapter()); // Pluga o "fio" do teclado
 
+        if (dificuldade.equals("Fácil")) { quantidadeInimigosBase = 2; }
+        else if (dificuldade.equals("Média")) { quantidadeInimigosBase = 3; }
+        else if (dificuldade.equals("Difícil")) { quantidadeInimigosBase = 5; }
+
+        carregarFase();
+    }
+
+    public void carregarFase() {
+        blocos.clear();
+        tiros.clear();
+        inimigos.clear();
+
         carregarMapa();
 
-        // GERANDO INIMIGOS (Spawn)
-        // Adicionamos 3 inimigos rápidos no topo do mapa em colunas diferentes
-        inimigos.add(new Inimigo_Rapido(0, 0));
-        inimigos.add(new Inimigo_Rapido(280, 0));
-        inimigos.add(new Inimigo_Rapido(560, 0));
-
-        // NOTA PARA APRESENTAÇÃO (Injeção de Dependência em Massa):
-        // Após carregar o mapa, entregamos a planta do cenário e a direção para todos os inimigos.
-        // Gambiarra temporária: Dar uma direção para o inimigo ver ele andando sozinho
-        for (Tanque ini : inimigos) {
-            ini.setMapa(blocos);
-            ini.set_direcao(Direcao.BAIXO);
-        }
-
+        jogador.setPosicao(160, 480);
         jogador.setMapa(blocos);
+        jogador.set_direcao(null);
+
+        for (int i = 0; i < quantidadeInimigosBase; i++) {
+            int spawnX = (i % 3) * 280;
+            Inimigo_Rapido inimigo = new Inimigo_Rapido(spawnX, 0);
+            inimigo.setMapa(blocos);
+            inimigo.set_direcao(Direcao.BAIXO);
+            inimigos.add(inimigo);
+        }
     }
 
     public void iniciarTela() { //auto explicativo né ?
         threadTela = new Thread(this);
         threadTela.start();
+        isPaused = false;
     }
 
     public void run() {
@@ -78,22 +93,19 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         memória com a posição atualizada, mas AQUI a janela atualiza (se redesenha) e pega a nova posição
          */
         while (threadTela != null) {
-            if (!gameOver) {
-                verificarEstadoDoJogo(); // Se o jogo não acabou, verifica se a base ainda existe
+            if (!isPaused) {
+                verificarEstadoDoJogo();
             }
             repaint(); // Chama o paintComponent
-            try {
-                Thread.sleep(17);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+
+            try { Thread.sleep(17); }
+            catch (InterruptedException e) { e.printStackTrace(); }
         }
     }
 
-    // NOTA PARA APRESENTAÇÃO (Lógica de Verificação - Game Loop):
-    // O painel percorre os blocos e verifica estados do jogo (Base e Inimigos atirando).
     private void verificarEstadoDoJogo() {
-        // 1. Verifica se a base ainda está viva
+        if (gameOver) return;
+
         boolean baseViva = false;
         for (Bloco bloco : blocos) {
             if (bloco.tipo == Bloco.BASE) {
@@ -102,26 +114,41 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
             }
         }
 
-        // 2. Verifica se o Player perdeu todas as vidas
         if (!baseViva || jogador.isMorto()) {
             this.gameOver = true;
-
-            // SÓ SALVA UMA VEZ E É QUANDO MORRE
-            if (!rankingSalvo) {
+            if (!pontuacaoSalva) {
                 GerenciadorArquivo.salvarPontuacao(nomeJogador, jogador.getPontuacao());
-                rankingSalvo = true;
+                pontuacaoSalva = true;
             }
         }
 
-        // 3. IA Atiradora: Lê se os inimigos querem atirar
+        if (inimigos.isEmpty() && !gameOver) {
+            faseAtual++;
+            quantidadeInimigosBase = (int) Math.ceil(quantidadeInimigosBase * 1.3);
+            carregarFase();
+        }
+
         for (Tanque ini : inimigos) {
             if (ini.prontoParaAtirar) {
-                // Cria o tiro do inimigo (tiroDoPlayer = false), e passamos o jogador para o tiro saber quem acertar
                 Projetil tiroInimigo = new Projetil(ini.get_x(), ini.get_y(), ini.getUltimaDirecao(), blocos, false, inimigos, jogador);
                 tiros.add(tiroInimigo);
-                ini.prontoParaAtirar = false; // Reseta a vontade do inimigo para ele não atirar infinitamente
+                ini.prontoParaAtirar = false;
             }
         }
+    }
+
+    private void encerrarPartidaEVoltarAoMenu() {
+        this.gameOver = true;
+        this.threadTela = null;
+        PainelJogo.isPaused = false;
+
+        jogador.forcarParada();
+        for (Tanque ini : inimigos) { ini.forcarParada(); }
+        for (Projetil tiro : tiros) { tiro.forcarParada(); }
+
+        JFrame janelaAtual = (JFrame) SwingUtilities.getWindowAncestor(this);
+        if (janelaAtual != null) { janelaAtual.dispose(); }
+        new MenuPrincipal().setVisible(true);
     }
 
     // É aqui que a mágica visual acontece
@@ -129,59 +156,66 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // NOTA PARA APRESENTAÇÃO (HUD - Head-Up Display):
-        // Desenhando o placar na tela usando os dados encapsulados do Player e da lista de Inimigos.
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 16));
+        for(Bloco bloco : blocos){ bloco.desenhar(g); }
 
-        g.drawString("Jogador: " + nomeJogador, 10, 20);
-        g.drawString("Vidas: " + Math.max(0, jogador.getVida()), 10, 40); // Math.max evita mostrar vida "-1"
-        g.drawString("Pontos: " + jogador.getPontuacao(), 10, 60);
-        g.drawString("Inimigos Restantes: " + inimigos.size(), LARGURA_TELA - 170, 20);
-
-        // 1. Desenhamos o Mapa PRIMEIRO (para ficar no fundo)
-        for(Bloco bloco : blocos){
-            bloco.desenhar(g);
-        }
-
-        // Desenhar o Jogador (Cor Verde) apenas se estiver vivo
         if (!jogador.isMorto()) {
             g.setColor(Color.GREEN);
             g.fillRect(jogador.get_x(), jogador.get_y(), 40, 40);
         }
 
-        // NOTA PARA APRESENTAÇÃO (Renderização de Múltiplos Inimigos):
-        // Percorremos a lista desenhando apenas os inimigos que ainda estão vivos.
         g.setColor(Color.RED);
-        for (Tanque ini : inimigos) {
-            g.fillRect(ini.get_x(), ini.get_y(), 40, 40);
-        }
+        for (Tanque ini : inimigos) { g.fillRect(ini.get_x(), ini.get_y(), 40, 40); }
 
-        // NOTA PARA APRESENTAÇÃO (Renderização de Tiros):
-        // Desenhamos todos os tiros que estão ativos na tela.
         for (int i = 0; i < tiros.size(); i++) {
             Projetil tiro = tiros.get(i);
-            if (tiro.isAtivo()) {
-                tiro.desenhar(g);
-            } else {
-                tiros.remove(i); // Remove da memória se o tiro já bateu em algo
-                i--; // Ajusta o índice da lista após a remoção
-            }
+            if (tiro.isAtivo()) { tiro.desenhar(g); }
+            else { tiros.remove(i); i--; }
         }
 
-        // NOTA PARA APRESENTAÇÃO (Interface de Fim de Jogo):
-        // Se a variável gameOver for verdadeira, sobrepomos um texto gigante no ecrã.
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.drawString("Jogador: " + nomeJogador, 10, 20);
+        g.drawString("Fase: " + faseAtual, 150, 20);
+        g.drawString("Inimigos: " + inimigos.size(), 230, 20);
+        g.drawString("Vidas: " + jogador.getVida(), 350, 20);
+        g.drawString("Pontos: " + jogador.getPontuacao(), 450, 20);
+
+        if (isPaused && !gameOver) {
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, LARGURA_TELA, ALTURA_TELA);
+            g.setColor(Color.YELLOW);
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("PAUSADO", LARGURA_TELA / 2 - 130, ALTURA_TELA / 2 - 20);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            g.drawString("Pressione ESC para Continuar", LARGURA_TELA / 2 - 145, ALTURA_TELA / 2 + 30);
+            g.drawString("Pressione ENTER para Voltar ao Menu", LARGURA_TELA / 2 - 180, ALTURA_TELA / 2 + 60);
+        }
+
         if (gameOver) {
             g.setColor(Color.RED);
-            g.setFont(new Font("Arial", Font.BOLD, 60)); // Fonte gigante e em negrito
-            // Matemática simples para centrar o texto no meio da janela
+            g.setFont(new Font("Arial", Font.BOLD, 60));
             g.drawString("GAME OVER", LARGURA_TELA / 2 - 190, ALTURA_TELA / 2);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            g.drawString("Pontuação guardada no Ranking!", LARGURA_TELA / 2 - 160, ALTURA_TELA / 2 + 50);
+            g.drawString("Pressione ENTER para Voltar ao Menu", LARGURA_TELA / 2 - 180, ALTURA_TELA / 2 + 90);
         }
     }
 
     // Metodo que transforma os números da matriz em objetos visuais
     public void carregarMapa() {
-        int[][] mapa = Mapas.getMapaFase1(); // Pega a matriz da outra classe
+        int[][] mapa;
+
+        // NOTA PARA APRESENTAÇÃO (Seleção Dinâmica de Cenário):
+        // O jogo avalia a string vinda do Menu e invoca o método correspondente da classe Mapas
+        if (mapaEscolhido.equals("Mapa 2")) {
+            mapa = Mapas.getMapaFase2(); // Carrega a matriz do Mapa 2
+        } else if (mapaEscolhido.equals("Mapa 3")) {
+            mapa = Mapas.getMapaFase3(); // Carrega a matriz do Mapa 3
+        } else {
+            mapa = Mapas.getMapaFase1(); // Pega a matriz da fase padrão
+        }
 
         for (int linha = 0; linha < 13; linha++) {
             for (int coluna = 0; coluna < 15; coluna++) {
@@ -199,39 +233,39 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     public class TecladoAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
-            // Se for Game Over, o jogador perde o controlo do tanque (ignora as teclas)
-            if (gameOver) return;
-
             int codigoTecla = e.getKeyCode();
 
+            if (codigoTecla == KeyEvent.VK_ENTER) {
+                if (gameOver || isPaused) {
+                    encerrarPartidaEVoltarAoMenu();
+                    return;
+                }
+            }
+
+            if (codigoTecla == KeyEvent.VK_ESCAPE || codigoTecla == KeyEvent.VK_P) {
+                if (!gameOver) { isPaused = !isPaused; }
+                return;
+            }
+
+            // Se o jogo acabou ou tá pausado, ignora as teclas de movimento e tiro
+            if (gameOver || isPaused) return;
+
             // Passamos a ordem para o jogador
-            if (codigoTecla == KeyEvent.VK_W || codigoTecla == KeyEvent.VK_UP) {
-                jogador.set_direcao(Direcao.CIMA);
-            }
-            if (codigoTecla == KeyEvent.VK_S || codigoTecla == KeyEvent.VK_DOWN) {
-                jogador.set_direcao(Direcao.BAIXO);
-            }
-            if (codigoTecla == KeyEvent.VK_A || codigoTecla == KeyEvent.VK_LEFT) {
-                jogador.set_direcao(Direcao.ESQUERDA);
-            }
-            if (codigoTecla == KeyEvent.VK_D || codigoTecla == KeyEvent.VK_RIGHT) {
-                jogador.set_direcao(Direcao.DIREITA);
-            }
+            if (codigoTecla == KeyEvent.VK_W || codigoTecla == KeyEvent.VK_UP) { jogador.set_direcao(Direcao.CIMA); }
+            if (codigoTecla == KeyEvent.VK_S || codigoTecla == KeyEvent.VK_DOWN) { jogador.set_direcao(Direcao.BAIXO); }
+            if (codigoTecla == KeyEvent.VK_A || codigoTecla == KeyEvent.VK_LEFT) { jogador.set_direcao(Direcao.ESQUERDA); }
+            if (codigoTecla == KeyEvent.VK_D || codigoTecla == KeyEvent.VK_RIGHT) { jogador.set_direcao(Direcao.DIREITA); }
 
             // NOTA PARA APRESENTAÇÃO (Ação de Atirar com Memória de Estado):
             if (codigoTecla == KeyEvent.VK_SPACE) {
-                // Em vez de olhar para a direcao_atual (que fica nula ao parar),
-                // o tiro agora pede a última direção que ficou gravada na memória do tanque.
                 Direcao direcaoTiro = jogador.getUltimaDirecao();
-
-                // Agora passamos 'true' (para indicar que é tiro do jogador), passamos a lista de inimigos, E o jogador
                 Projetil novoTiro = new Projetil(jogador.get_x(), jogador.get_y(), direcaoTiro, blocos, true, inimigos, jogador);
                 tiros.add(novoTiro);
             }
         }
         @Override
         public void keyReleased(KeyEvent e) {
-            if (gameOver) return;
+            if (gameOver || isPaused) return;
             // Quando soltar qualquer tecla, definimos a direção como NULL
             // Isso fará o 'if(direcao == null) return' lá no Tanque funcionar e ele para.
             jogador.set_direcao(null);
