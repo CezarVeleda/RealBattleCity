@@ -5,10 +5,12 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui para atualizar a TELA
     // Definições de tamanho da tela (Grid 15x13 como sugere o PDF)
@@ -30,6 +32,10 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
 
     // NOTA PARA APRESENTAÇÃO (Uso de Coleções / Gerenciador de Inimigos):
     List<Tanque> inimigos = new ArrayList<>();
+
+    // NOVO: Lista para guardar os Power-ups que estão na tela
+    List<PowerUp> powerUps = new ArrayList<>();
+    Random random = new Random();
 
     private boolean gameOver = false;
 
@@ -65,6 +71,7 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
         blocos.clear();
         tiros.clear();
         inimigos.clear();
+        powerUps.clear(); // Limpa os itens da fase anterior
 
         carregarMapa();
 
@@ -135,6 +142,47 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
                 ini.prontoParaAtirar = false;
             }
         }
+
+        // --- NOTA PARA APRESENTAÇÃO (Geração de Itens/Algoritmo de Busca) ---
+        // Se não há nenhum item na tela, o jogo tem ~0.5% de chance a cada tick de gerar um!
+        if (powerUps.isEmpty() && random.nextInt(1000) < 5) {
+            List<Bloco> blocosVazios = new ArrayList<>();
+            // Procura todos os espaços de chão preto
+            for (Bloco b : blocos) {
+                if (b.tipo == Bloco.VAZIO) blocosVazios.add(b);
+            }
+            // Sorteia um chão limpo para colocar o item (para não nascer dentro do aço)
+            if (!blocosVazios.isEmpty()) {
+                Bloco escolhido = blocosVazios.get(random.nextInt(blocosVazios.size()));
+                int tipoItem = random.nextBoolean() ? PowerUp.TIPO_VIDA : PowerUp.TIPO_BOMBA;
+                // Soma 5 pixels para o item nascer centralizado no bloco de 40x40
+                powerUps.add(new PowerUp(escolhido.x + 5, escolhido.y + 5, tipoItem));
+            }
+        }
+
+        // --- NOTA PARA APRESENTAÇÃO (Colisão Player -> PowerUp) ---
+        Rectangle hitboxPlayer = new Rectangle(jogador.get_x(), jogador.get_y(), 40, 40);
+        for (int i = 0; i < powerUps.size(); i++) {
+            PowerUp p = powerUps.get(i);
+            if (p.ativo && hitboxPlayer.intersects(p)) {
+                p.ativo = false; // Desativa o item da tela
+
+                if (p.tipo == PowerUp.TIPO_VIDA) {
+                    jogador.ganharVida(); // Curar
+                }
+                else if (p.tipo == PowerUp.TIPO_BOMBA) {
+                    // Mata todos os inimigos da tela!
+                    for(Tanque ini : inimigos) {
+                        ini.forcarParada(); // Mata a thread
+                        jogador.adicionarPontos(100); // Ganha os pontos de todos
+                    }
+                    inimigos.clear(); // Limpa do mapa
+                }
+
+                powerUps.remove(i);
+                i--;
+            }
+        }
     }
 
     private void encerrarPartidaEVoltarAoMenu() {
@@ -156,7 +204,17 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        for(Bloco bloco : blocos){ bloco.desenhar(g); }
+        // 1. CAMADA DE FUNDO: Desenha chão, paredes, aço e água
+        for(Bloco bloco : blocos){
+            if (bloco.tipo != Bloco.ARVORE) {
+                bloco.desenhar(g);
+            }
+        }
+
+        // NOVO: Desenha os Power-ups no chão!
+        for (PowerUp p : powerUps) {
+            p.desenhar(g);
+        }
 
         if (!jogador.isMorto()) {
             g.setColor(Color.GREEN);
@@ -170,6 +228,13 @@ public class PainelJogo extends JPanel implements Runnable{ // Runnable aqui par
             Projetil tiro = tiros.get(i);
             if (tiro.isAtivo()) { tiro.desenhar(g); }
             else { tiros.remove(i); i--; }
+        }
+
+        // 2. CAMADA DA FRENTE (Z-Index maior): Desenha a Árvore POR CIMA DOS TANQUES
+        for(Bloco bloco : blocos){
+            if (bloco.tipo == Bloco.ARVORE) {
+                bloco.desenhar(g);
+            }
         }
 
         g.setColor(Color.WHITE);

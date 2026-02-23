@@ -10,6 +10,7 @@ public class Bloco extends Rectangle {
     public static final int ACO = 2;    // Indestrutível
     public static final int AGUA = 3;   // Não anda, mas tiro passa
     public static final int BASE = 4;   // A águia que temos que proteger
+    public static final int ARVORE = 5; // Mato que esconde o tanque
     // La nos nossos mapas.txt esses serão os números que vamos usar para definir onde será agua, aço, etc.
 
 
@@ -36,6 +37,9 @@ public class Bloco extends Rectangle {
                 break;
             case BASE:
                 cor = Color.YELLOW; // Temporário, depois pode ser imagem
+                break;
+            case ARVORE:
+                cor = new Color(34, 139, 34); // Verde Escuro (Camuflagem)
                 break;
             default:
                 cor = Color.BLACK; // Vazio

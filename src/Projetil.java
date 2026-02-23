@@ -84,8 +84,8 @@ public class Projetil implements I_Movimento, Runnable {
         // 2. Checa colisão com os blocos físicos
         if (mapa != null) {
             for (Bloco bloco : mapa) {
-                // Se não for vazio e não for água (o tiro passa voando por cima da água)
-                if (bloco.tipo != Bloco.VAZIO && bloco.tipo != Bloco.AGUA) {
+                // Se não for vazio, nem água, nem árvore (o tiro passa liso por eles)
+                if (bloco.tipo != Bloco.VAZIO && bloco.tipo != Bloco.AGUA && bloco.tipo != Bloco.ARVORE) {
                     if (areaTiro.intersects(bloco)) {
                         ativo = false; // O tiro morre ao bater (a Thread encerra)
 
