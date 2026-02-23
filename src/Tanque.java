@@ -94,7 +94,8 @@ public abstract class Tanque implements I_Movimento, Runnable{
             for (Bloco bloco : mapa) {
                 // NOTA PARA APRESENTAÇÃO (POO - Herança na Prática):
                 // Como a classe Bloco "extends Rectangle", herdamos o metodo intersects() do próprio Java.
-                if (bloco.tipo != Bloco.VAZIO && areaTanqueFutura.intersects(bloco)) {
+                // O tanque bate em tudo que NÃO for VAZIO e NÃO for ÁRVORE (pois a árvore é só mato)
+                if (bloco.tipo != Bloco.VAZIO && bloco.tipo != Bloco.ARVORE && areaTanqueFutura.intersects(bloco)) {
                     return false; // Bateu na parede, aço ou água
                 }
             }
@@ -190,6 +191,11 @@ public abstract class Tanque implements I_Movimento, Runnable{
     // Retorna a vida atual para o Painel poder desenhar no HUD
     public int getVida() {
         return this.vida;
+    }
+
+    // NOVO: Método para o PowerUp de Coração
+    public void ganharVida() {
+        this.vida++;
     }
 
     // NOVO: Desliga a Thread forçadamente caso o jogador decida Voltar ao Menu

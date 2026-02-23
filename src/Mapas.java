@@ -1,24 +1,23 @@
 public class Mapas {
 
-    // NOTA PARA APRESENTAÇÃO (Evitando Números Mágicos):
-    // Em vez de usar "5" ou "4" para a base, injetamos a constante Bloco.BASE diretamente
-    // na matriz. Isso garante que o jogo nunca vai quebrar caso o valor da variável mude.
+    // NOTA PARA APRESENTAÇÃO (Level Design e Balanceamento):
+    // Foram adicionados blocos de AÇO (2) na coluna central do topo para evitar que o
+    // inimigo que nasce no meio tenha linha de tiro direta ("Sniper") para destruir a base.
 
     public static int[][] getMapaFase1() {
         return new int[][]{
                 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-                {0,1,1,0,1,1,0,0,0,1,1,0,1,1,0},
-                {0,1,1,0,1,1,0,0,0,1,1,0,1,1,0},
+                {0,1,1,0,1,1,0,2,0,1,1,0,1,1,0}, // <-- ESCUDO ANTI-SNIPER AQUI (Aço no meio!)
+                {0,1,1,0,1,1,0,5,5,1,1,0,1,1,0},
+                {0,1,1,0,1,1,0,5,5,1,1,0,1,1,0},
                 {0,1,1,0,1,1,0,1,0,1,1,0,1,1,0},
-                {0,1,1,0,1,1,0,1,0,1,1,0,1,1,0},
-                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+                {0,0,0,0,0,0,0,2,0,0,0,0,0,0,0}, // <-- Outro escudo de Aço no meio da tela
                 {0,1,1,0,2,2,0,0,0,2,2,0,1,1,0},
                 {0,1,1,0,2,2,0,0,0,2,2,0,1,1,0},
-                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-                {1,1,0,1,1,1,0,0,0,1,1,1,0,1,1},
+                {0,0,0,3,3,3,0,0,0,0,0,0,0,0,0},
+                {1,1,0,3,3,3,0,0,0,1,1,1,0,1,1},
                 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
                 {0,0,0,0,0,0,1,1,1,0,0,0,0,0,0},
-                // A base agora usa a variável oficial da sua classe Bloco
                 {0,0,0,0,0,0,1,Bloco.BASE,1,0,0,0,0,0,0}
         };
     }
@@ -26,7 +25,7 @@ public class Mapas {
     public static int[][] getMapaFase2() {
         return new int[][]{
                 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-                {0,2,2,0,1,1,0,2,0,1,1,0,2,2,0},
+                {0,2,2,0,1,1,0,2,0,1,1,0,2,2,0}, // Esse já tinha o Aço anti-sniper!
                 {0,2,2,0,1,1,0,2,0,1,1,0,2,2,0},
                 {0,0,0,0,0,0,0,2,0,0,0,0,0,0,0},
                 {1,1,1,1,0,2,2,2,2,2,0,1,1,1,1},
@@ -36,7 +35,6 @@ public class Mapas {
                 {1,1,1,0,0,0,0,0,0,0,0,0,1,1,1},
                 {2,2,2,0,2,2,0,0,0,2,2,0,2,2,2},
                 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-                // Espaço desimpedido nas colunas 3, 4 e 5 para o player não nascer na parede
                 {0,0,0,0,0,0,1,1,1,0,0,0,0,0,0},
                 {0,0,0,0,0,0,1,Bloco.BASE,1,0,0,0,0,0,0}
         };
@@ -45,7 +43,7 @@ public class Mapas {
     public static int[][] getMapaFase3() {
         return new int[][]{
                 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-                {0,1,1,1,1,0,0,0,0,0,1,1,1,1,0},
+                {0,1,1,1,1,0,0,2,0,0,1,1,1,1,0}, // <-- ESCUDO ANTI-SNIPER AQUI!
                 {0,1,2,2,1,0,1,1,1,0,1,2,2,1,0},
                 {0,1,2,2,1,0,1,1,1,0,1,2,2,1,0},
                 {0,1,1,1,1,0,0,0,0,0,1,1,1,1,0},
